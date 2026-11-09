@@ -1,0 +1,84 @@
+// Mac virtual key codes (kVK_*, Carbon HIToolbox/Events.h) to USB HID
+// keyboard usages (HID Usage Tables, page 0x07).
+//
+// Mapping is by physical key position, not by character, so the target's own
+// keyboard layout decides what each key types -- exactly like plugging in a
+// real keyboard.
+
+public enum HIDKeymap {
+    /// Modifier bits of byte 0 in the boot keyboard report.
+    public enum Modifier {
+        public static let leftControl: UInt8 = 0x01
+        public static let leftShift: UInt8 = 0x02
+        public static let leftAlt: UInt8 = 0x04
+        public static let leftGUI: UInt8 = 0x08
+        public static let rightControl: UInt8 = 0x10
+        public static let rightShift: UInt8 = 0x20
+        public static let rightAlt: UInt8 = 0x40
+        public static let rightGUI: UInt8 = 0x80
+    }
+
+    public enum KeyCode {
+        public static let capsLock: UInt16 = 0x39
+        public static let escape: UInt16 = 0x35
+        public static let grave: UInt16 = 0x32
+        public static let isoSection: UInt16 = 0x0A
+        public static let modifiers: Set<UInt16> = [
+            0x36, 0x37, 0x38, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F,
+        ]
+    }
+
+    public static let capsLockUsage: UInt8 = 0x39
+    public static let deleteUsage: UInt8 = 0x4C
+
+    /// HID usage for a non-modifier key, or nil if the key has no HID
+    /// equivalent (e.g. Fn, or media keys that macOS does not deliver as key
+    /// events).
+    ///
+    /// `isISO`: on ISO keyboards macOS reports the key left of 1 (§) as
+    /// kVK_ISO_Section and the key right of left Shift as kVK_ANSI_Grave. On a
+    /// PC ISO keyboard those positions are Grave (0x35) and Non-US Backslash
+    /// (0x64) respectively.
+    public static func usage(for keyCode: UInt16, isISO: Bool = false) -> UInt8? {
+        if keyCode == KeyCode.grave, isISO { return 0x64 }
+        guard Int(keyCode) < table.count else { return nil }
+        let usage = table[Int(keyCode)]
+        return usage == 0 ? nil : usage
+    }
+
+    // Indexed by kVK_* code; 0 = unmapped.
+    static let table: [UInt8] = [
+        /* 0x00 A        */ 0x04, /* 0x01 S        */ 0x16, /* 0x02 D       */ 0x07, /* 0x03 F       */ 0x09,
+        /* 0x04 H        */ 0x0B, /* 0x05 G        */ 0x0A, /* 0x06 Z       */ 0x1D, /* 0x07 X       */ 0x1B,
+        /* 0x08 C        */ 0x06, /* 0x09 V        */ 0x19, /* 0x0A §       */ 0x35, /* 0x0B B       */ 0x05,
+        /* 0x0C Q        */ 0x14, /* 0x0D W        */ 0x1A, /* 0x0E E       */ 0x08, /* 0x0F R       */ 0x15,
+        /* 0x10 Y        */ 0x1C, /* 0x11 T        */ 0x17, /* 0x12 1       */ 0x1E, /* 0x13 2       */ 0x1F,
+        /* 0x14 3        */ 0x20, /* 0x15 4        */ 0x21, /* 0x16 6       */ 0x23, /* 0x17 5       */ 0x22,
+        /* 0x18 =        */ 0x2E, /* 0x19 9        */ 0x26, /* 0x1A 7       */ 0x24, /* 0x1B -       */ 0x2D,
+        /* 0x1C 8        */ 0x25, /* 0x1D 0        */ 0x27, /* 0x1E ]       */ 0x30, /* 0x1F O       */ 0x12,
+        /* 0x20 U        */ 0x18, /* 0x21 [        */ 0x2F, /* 0x22 I       */ 0x0C, /* 0x23 P       */ 0x13,
+        /* 0x24 Return   */ 0x28, /* 0x25 L        */ 0x0F, /* 0x26 J       */ 0x0D, /* 0x27 '       */ 0x34,
+        /* 0x28 K        */ 0x0E, /* 0x29 ;        */ 0x33, /* 0x2A \       */ 0x31, /* 0x2B ,       */ 0x36,
+        /* 0x2C /        */ 0x38, /* 0x2D N        */ 0x11, /* 0x2E M       */ 0x10, /* 0x2F .       */ 0x37,
+        /* 0x30 Tab      */ 0x2B, /* 0x31 Space    */ 0x2C, /* 0x32 `       */ 0x35, /* 0x33 Bksp    */ 0x2A,
+        /* 0x34          */ 0x00, /* 0x35 Esc      */ 0x29, /* 0x36 RCmd    */ 0x00, /* 0x37 Cmd     */ 0x00,
+        /* 0x38 Shift    */ 0x00, /* 0x39 Caps     */ 0x39, /* 0x3A Opt     */ 0x00, /* 0x3B Ctrl    */ 0x00,
+        /* 0x3C RShift   */ 0x00, /* 0x3D ROpt     */ 0x00, /* 0x3E RCtrl   */ 0x00, /* 0x3F Fn      */ 0x00,
+        /* 0x40 F17      */ 0x6C, /* 0x41 KP.      */ 0x63, /* 0x42         */ 0x00, /* 0x43 KP*     */ 0x55,
+        /* 0x44          */ 0x00, /* 0x45 KP+      */ 0x57, /* 0x46         */ 0x00, /* 0x47 Clear   */ 0x53,
+        /* 0x48 VolUp    */ 0x00, /* 0x49 VolDown  */ 0x00, /* 0x4A Mute    */ 0x00, /* 0x4B KP/     */ 0x54,
+        /* 0x4C KPEnter  */ 0x58, /* 0x4D         */ 0x00, /* 0x4E KP-     */ 0x56, /* 0x4F F18     */ 0x6D,
+        /* 0x50 F19      */ 0x6E, /* 0x51 KP=      */ 0x67, /* 0x52 KP0     */ 0x62, /* 0x53 KP1     */ 0x59,
+        /* 0x54 KP2      */ 0x5A, /* 0x55 KP3      */ 0x5B, /* 0x56 KP4     */ 0x5C, /* 0x57 KP5     */ 0x5D,
+        /* 0x58 KP6      */ 0x5E, /* 0x59 KP7      */ 0x5F, /* 0x5A F20     */ 0x6F, /* 0x5B KP8     */ 0x60,
+        /* 0x5C KP9      */ 0x61, /* 0x5D JIS ¥    */ 0x89, /* 0x5E JIS _   */ 0x87, /* 0x5F JIS KP, */ 0x85,
+        /* 0x60 F5       */ 0x3E, /* 0x61 F6       */ 0x3F, /* 0x62 F7      */ 0x40, /* 0x63 F3      */ 0x3C,
+        /* 0x64 F8       */ 0x41, /* 0x65 F9       */ 0x42, /* 0x66 Eisu    */ 0x91, /* 0x67 F11     */ 0x44,
+        /* 0x68 Kana     */ 0x90, /* 0x69 F13      */ 0x68, /* 0x6A F16     */ 0x6B, /* 0x6B F14     */ 0x69,
+        /* 0x6C          */ 0x00, /* 0x6D F10      */ 0x43, /* 0x6E Menu    */ 0x65, /* 0x6F F12     */ 0x45,
+        /* 0x70          */ 0x00, /* 0x71 F15      */ 0x6A, /* 0x72 Help    */ 0x49, /* 0x73 Home    */ 0x4A,
+        /* 0x74 PgUp     */ 0x4B, /* 0x75 FwdDel   */ 0x4C, /* 0x76 F4      */ 0x3D, /* 0x77 End     */ 0x4D,
+        /* 0x78 F2       */ 0x3B, /* 0x79 PgDn     */ 0x4E, /* 0x7A F1      */ 0x3A, /* 0x7B Left    */ 0x50,
+        /* 0x7C Right    */ 0x4F, /* 0x7D Down     */ 0x51, /* 0x7E Up      */ 0x52, /* 0x7F         */ 0x00,
+    ]
+}
