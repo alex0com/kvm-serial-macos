@@ -25,12 +25,6 @@ struct Settings {
         set { defaults.set(newValue, forKey: "cameraID") }
     }
 
-    /// VideoFormatChoice.key of the chosen format, or nil for automatic.
-    static var videoFormat: String? {
-        get { defaults.string(forKey: "videoFormat") }
-        set { defaults.set(newValue, forKey: "videoFormat") }
-    }
-
     static var swapCommandControl: Bool {
         get { defaults.bool(forKey: "swapCommandControl") }
         set { defaults.set(newValue, forKey: "swapCommandControl") }

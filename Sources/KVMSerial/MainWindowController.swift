@@ -24,6 +24,9 @@ final class MainWindowController: NSObject, NSWindowDelegate, NSMenuDelegate {
     // Video
     private var camera: AVCaptureDevice?
     private var format: VideoFormatChoice?
+    /// True when `format` was picked from the menu rather than automatically.
+    /// Not saved: each device's formats are read again when it is opened.
+    private var formatPicked = false
     private var videoStatus = "No video device"
 
     // HUD rates
@@ -307,7 +310,6 @@ final class MainWindowController: NSObject, NSWindowDelegate, NSMenuDelegate {
         let devices = VideoCapture.devices()
         guard let camera = requested
             ?? devices.first(where: { $0.uniqueID == Settings.cameraID })
-            ?? devices.first(where: { $0.localizedName == "USB3 Video" })
             ?? devices.first
         else {
             videoStatus = "No video device"
@@ -315,8 +317,7 @@ final class MainWindowController: NSObject, NSWindowDelegate, NSMenuDelegate {
         }
         let choices = VideoFormatChoice.choices(for: camera)
         guard let choice = requestedFormat
-            ?? choices.first(where: { $0.key == Settings.videoFormat })
-            ?? choices.first(where: { VideoFormatChoice.renderable.contains($0.subtype) })
+            ?? VideoFormatChoice.automatic(for: camera)
             ?? choices.first
         else {
             videoStatus = "\(camera.localizedName) has no usable formats"
@@ -325,6 +326,7 @@ final class MainWindowController: NSObject, NSWindowDelegate, NSMenuDelegate {
 
         self.camera = camera
         format = choice
+        formatPicked = requestedFormat != nil
         Settings.cameraID = camera.uniqueID
         videoStatus = "\(camera.localizedName) · \(choice.label)"
         log.info("Opening \(camera.localizedName, privacy: .public) as \(choice.label, privacy: .public)")
@@ -356,7 +358,6 @@ final class MainWindowController: NSObject, NSWindowDelegate, NSMenuDelegate {
         guard let id = sender.representedObject as? String,
             let camera = VideoCapture.devices().first(where: { $0.uniqueID == id })
         else { return }
-        Settings.videoFormat = nil
         openCamera(camera)
     }
 
@@ -364,8 +365,12 @@ final class MainWindowController: NSObject, NSWindowDelegate, NSMenuDelegate {
         guard let camera, let key = sender.representedObject as? String,
             let choice = VideoFormatChoice.choices(for: camera).first(where: { $0.key == key })
         else { return }
-        Settings.videoFormat = key
         openCamera(camera, format: choice)
+    }
+
+    @objc private func selectAutomaticFormat(_ sender: NSMenuItem) {
+        guard let camera else { return }
+        openCamera(camera)
     }
 
     // MARK: - Input actions
@@ -629,10 +634,16 @@ final class MainWindowController: NSObject, NSWindowDelegate, NSMenuDelegate {
             if menu.items.isEmpty { menu.addItem(withTitle: "No video devices", action: nil, keyEquivalent: "") }
         case formatMenu:
             guard let camera else { break }
+            let automatic = item(
+                "Automatic (\(VideoFormatChoice.automatic(for: camera)?.label ?? "none"))",
+                #selector(selectAutomaticFormat(_:)))
+            automatic.state = formatPicked ? .off : .on
+            menu.addItem(automatic)
+            menu.addItem(.separator())
             for choice in VideoFormatChoice.choices(for: camera) {
                 let entry = item(choice.label, #selector(selectFormat(_:)))
                 entry.representedObject = choice.key
-                entry.state = choice.key == format?.key ? .on : .off
+                entry.state = formatPicked && choice.key == format?.key ? .on : .off
                 menu.addItem(entry)
             }
         case layoutMenu:

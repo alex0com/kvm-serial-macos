@@ -57,6 +57,20 @@ struct VideoFormatChoice: @unchecked Sendable {
                 return $0.maxFrameRate > $1.maxFrameRate
             }
     }
+
+    /// The format to use when none is saved. Frame rate comes before size:
+    /// 4K cards often list 3840×2160 at under 20 fps, which adds a frame
+    /// interval of 50+ ms. Portrait modes such as 1920×2160 are skipped.
+    static func automatic(for device: AVCaptureDevice) -> VideoFormatChoice? {
+        let usable = choices(for: device).filter { renderable.contains($0.subtype) }
+        let landscape = usable.filter { $0.width >= $0.height }
+        return (landscape.isEmpty ? usable : landscape).min {
+            if $0.isNative != $1.isNative { return $0.isNative }
+            let fa = $0.maxFrameRate.rounded(), fb = $1.maxFrameRate.rounded()
+            if fa != fb { return fa > fb }
+            return Int($0.width) * Int($0.height) > Int($1.width) * Int($1.height)
+        }
+    }
 }
 
 /// AVFoundation capture into a frame callback, tuned for latency: the
